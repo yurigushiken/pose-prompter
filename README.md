@@ -50,9 +50,11 @@ This component includes two files: `app.py` and `index.html`.
   - Displays the generated images in real-time.
   - Allows for continuous image generation.
 
-## Workflows
+### Sample Videos
 
-Workflows are combinations of JSON files created using ComfyUI’s point/click/drag interface. They define the image generation parameters and inputs, including the screenshots captured by the camera component.
+- **YouCut_20231219_215001809.mp4**: [Link to video](sample%20videos/YouCut_20231219_215001809.mp4)
+- **YouCut_20231219_222700984_1.mp4**: [Link to video](sample%20videos/YouCut_20231219_222700984_1.mp4)
+- **YouCut_20231219_223437317.mp4**: [Link to video](sample%20videos/YouCut_20231219_223437317.mp4)
 
 ## Installation and Setup
 
@@ -68,17 +70,34 @@ Workflows are combinations of JSON files created using ComfyUI’s point/click/d
     pip install flask flask_socketio requests watchdog mediapipe opencv-python
     ```
 
-3. **Run the Camera Component**:
+3. **Set Up Directories**:
+    Ensure you have the following directory structure for the images:
+    ```plaintext
+    pose-prompter/
+    ├── app variations/
+    │   ├── static/
+    │   │   └── images/
+    │   │       ├── combined/
+    │   │       └── user-uploaded/
+    │   └── workflows/
+    └── app_camera variations/
+        └── static/
+            └── images/
+    ```
+
+4. **Run the Camera Component**:
     ```bash
+    cd app_camera\ variations
     python app_camera.py
     ```
 
-4. **Run the Image Generation Component**:
+5. **Run the Image Generation Component**:
     ```bash
+    cd ../app\ variations
     python app.py
     ```
 
-5. **Open the Application**:
+6. **Open the Application**:
     - For real-time hand tracking, navigate to `http://localhost:5002`.
     - For image generation, navigate to `http://localhost:5001`.
 
@@ -109,9 +128,6 @@ The project was inspired by the release of SDXL Turbo, which allows for near-rea
 
 ## Contact
 
-- **Yuri Gushiken**: [Email](mailto:mischagushiken@gmail.com)
+- **Yuri Gushiken**: [mischagushiken@gmail.com](mailto:mischagushiken@gmail.com)
 
 For more detailed information, visit [Yuri's Professional Site](https://yurigushiken.github.io/).
-and
-See blog post:
-https://yurigushiken.github.io/coding/design/experimentation/2023/12/16/Pose-Prompter.html
