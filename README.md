@@ -53,12 +53,15 @@ This component includes two files: `app.py` and `index.html`.
 ### Sample Videos
 
 - **Dual Planetary Dance**:
+
   [![Dual Planetary Dance](https://img.youtube.com/vi/eyOeO71i9Yo/0.jpg)](https://youtu.be/eyOeO71i9Yo)
 
 - **Moon over Horizon**:
+
   [![Moon over Horizon](https://img.youtube.com/vi/vMOaVY5-riU/0.jpg)](https://youtu.be/vMOaVY5-riU)
 
 - **Celestial Being**:
+
   [![Celestial Being](https://img.youtube.com/vi/eyOeO71i9Yo/0.jpg)](https://youtu.be/eyOeO71i9Yo)
 
 ## Installation and Setup
