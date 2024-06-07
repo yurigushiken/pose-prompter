@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Image Generator</title>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+    <script src="https://cdn.socket.io/socket.io-3.0.3.min.js"></script>
+    <script>
+        $(function () {
+            $("#slider").slider({
+                min: 0,
+                max: 100,
+                slide: function (event, ui) {
+                    var color = getColorFromValue(ui.value);
+                    $("#color-name").text(color);
+                    $("#prompt-input").val(" blank in the universe");
+                }
+            });
+        });
+
+        function getColorFromValue(value) {
+            var colors = ['Red',  'Orange', 'Amber', 'Gold', 'Yellow',  'Green', 'Emerald', 'Turquoise', 'Cyan', 'SkyBlue', 'Azure', 'Blue', 'Violet', 'Purple', 'Pink', 'Fuchsia', 'Rose'];
+            var index = Math.floor(value * (colors.length - 1) / 100);
+            return colors[index];
+        }
+
+        const socket = io('http://localhost:5001');
+
+            socket.on('image_data', function (data) {
+                if (data.type === 'binary') {
+                    const imageElement = document.getElementById('generated-image');
+                    imageElement.src = `data:image/png;base64,${data.data}`;
+                }
+            });
+
+            let isGeneratingContinuously = false;
+            let continuousGenerationInterval;
+
+            function toggleContinuousGeneration() {
+                isGeneratingContinuously = $('#generate-continuous').is(':checked');
+                if (isGeneratingContinuously) {
+                    continuousGenerationInterval = setInterval(generate, 500); // 200ms for 5 images per second
+                } else {
+                    clearInterval(continuousGenerationInterval);
+                }
+            }
+
+            function uploadImage() {
+                var file = document.getElementById('image-upload').files[0];
+                var reader = new FileReader();
+                
+                reader.onloadend = function() {
+                    socket.emit('upload_image', { image: reader.result });
+                }
+
+                if (file) {
+                    reader.readAsDataURL(file);
+                } else {
+                    alert('No file selected!');
+                }
+            }
+   
+
+            function generate() {
+                var prompt = $("#prompt-input").val();
+                socket.emit('generate_image', { prompt: prompt });
+            }
+    </script>
+    <style>
+        #color-name {
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="slider"></div>
+    <span id="color-name">Red</span>
+    <form id="image-form" onsubmit="event.preventDefault(); generate();">
+        <input type="text" id="prompt-input" name="prompt" value="a Red planet" readonly>
+        <button type="submit">Generate Image</button>
+        <input type="checkbox" id="generate-continuous" name="generateContinuous" onchange="toggleContinuousGeneration();">
+        <label for="generate-continuous">Generate Continuously</label>
+
+    </form>
+    <img id="generated-image" src="" alt="Generated Image" style="max-width: 100%;">
+    <form id="upload-form">
+        <input type="file" id="image-upload" accept="image/*">
+        <button type="button" onclick="uploadImage()">Upload Image</button>
+    </form>
+</body>
+</html>
