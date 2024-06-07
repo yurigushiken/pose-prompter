@@ -123,7 +123,7 @@ The project was inspired by the release of SDXL Turbo, which allows for near-rea
 
 ## Acknowledgments
 
-- **Teachers College, Columbia University**: For the course and project opportunity.
+- **Professor James Dec, Teachers College, Columbia University**: For the course and project opportunity.
 - **ComfyUI Community**: For support and resources.
 
 ## Contact
