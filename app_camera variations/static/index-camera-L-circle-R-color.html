@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Real-Time Hand Tracking with Overlay</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: black; }
+        #video, #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+    </style>
+</head>
+<body>
+    <video id="video" width="640" height="480" autoplay style="display: none;"></video>
+    <canvas id="canvas" width="768" height="512"></canvas>
+
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const context = canvas.getContext('2d');
+        let lastTimeStamp = 0;
+    
+        // Access the webcam
+        if (navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function (stream) {
+                    video.srcObject = stream;
+                    video.addEventListener('loadedmetadata', processInRealTime);
+                })
+                .catch(function (error) {
+                    console.error("Error accessing the webcam", error);
+                });
+        }
+    
+        function processInRealTime(timeStamp) {
+            if (timeStamp - lastTimeStamp > 60) { // Process every 50 milliseconds
+                lastTimeStamp = timeStamp;
+                captureAndProcessFrame();
+            }
+            requestAnimationFrame(processInRealTime);
+        }
+    
+        function captureAndProcessFrame() {
+            const imageData = videoToImageData();
+
+            fetch('/process_frame', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ image: imageData })
+            })
+            .then(response => response.json())
+            .then(data => {
+                context.fillStyle = 'black';
+                context.fillRect(0, 0, canvas.width, canvas.height);
+
+                let leftHandY = null;
+
+                data.fingertip_details.forEach(fingertip => {
+                    if (fingertip.hand_side === 'Left') {
+                        leftHandY = fingertip.y * 2;
+                    }
+                });
+
+                data.fingertip_details.forEach(fingertip => {
+                    if (fingertip.hand_side === 'Right') {
+                        let color = leftHandY !== null ? getColorFromValue(leftHandY) : 'rgb(255, 255, 255)';
+                        context.beginPath();
+                        // Scale and mirror X coordinate according to the new canvas size
+                        let mirroredX = canvas.width - (fingertip.x * (768 / video.videoWidth));
+                        let scaledY = fingertip.y * (512 / video.videoHeight);
+                        let size = (canvas.height / fingertip.size) * 4; // You may need to adjust this factor
+                        context.arc(mirroredX, scaledY, size, 0, 2 * Math.PI);
+                        context.fillStyle = color;
+                        context.fill();
+                    }
+                });
+            try {
+                // Code that may throw an error
+            } catch (error) {
+                // Error handling code
+            }
+                console.error('Error processing the frame:', error);
+            });
+        }
+
+
+
+
+        function videoToImageData() {
+    let tempCanvas = document.createElement('canvas');
+    let tempCtx = tempCanvas.getContext('2d');
+
+    // Canvas dimensions
+    const canvasWidth = 768;
+    const canvasHeight = 512;
+    tempCanvas.width = canvasWidth;
+    tempCanvas.height = canvasHeight;
+
+    // Video and canvas aspect ratios
+    const videoAspectRatio = video.videoWidth / video.videoHeight;
+    const canvasAspectRatio = canvasWidth / canvasHeight;
+
+    let drawWidth, drawHeight, drawX, drawY;
+
+    // Fit the entire video feed into the canvas while maintaining aspect ratio
+    if (videoAspectRatio > canvasAspectRatio) {
+        // Video is wider than canvas
+        drawWidth = canvasWidth;
+        drawHeight = drawWidth / videoAspectRatio;
+        drawX = 0;
+        drawY = (canvasHeight - drawHeight) / 2;
+    } else {
+        // Video is taller than canvas
+        drawHeight = canvasHeight;
+        drawWidth = drawHeight * videoAspectRatio;
+        drawX = (canvasWidth - drawWidth) / 2;
+        drawY = 0;
+    }
+
+    // Draw the video centered and resized on the canvas
+    tempCtx.drawImage(video, drawX, drawY, drawWidth, drawHeight);
+
+    let imageData = tempCanvas.toDataURL('image/jpeg', 0.5);
+    tempCanvas = null;
+
+    return imageData;
+}
+
+
+
+        function getColorFromValue(yPosition) {
+            var canvasHeight = canvas.height;
+            var colors = [
+                'Red', 'Crimson', 'Scarlet', 'Orange', 'Amber', 'Gold', 
+                'Yellow', 'Lemon', 'Chartreuse', 'Green', 'Emerald', 'Turquoise', 
+                'Cyan', 'SkyBlue', 'Azure', 'Blue', 'Sapphire', 'Indigo', 
+                'Violet', 'Purple', 'Magenta', 'Pink', 'Fuchsia', 'Rose'
+            ];
+
+            // Map yPosition to the color index. The lower the yPosition (higher on canvas), the lower the index.
+            var index = Math.floor(yPosition * (colors.length - 1) / canvasHeight);
+            return colors[index];
+        }
+
+
+        function saveImage() {
+            const imageData = canvas.toDataURL('image/png');
+            fetch('/save_image', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ image: imageData })
+            });
+        }
+
+        setInterval(saveImage, 300);
+    </script>
+</body>
+</html>

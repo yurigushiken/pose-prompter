@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Real-Time Hand Tracking with Overlay</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: black; }
+        #video, #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+    </style>
+</head>
+<body>
+    <video id="video" width="640" height="480" autoplay style="display: none;"></video>
+    <canvas id="canvas" width="768" height="512"></canvas>
+
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const context = canvas.getContext('2d');
+        let lastTimeStamp = 0;
+    
+        // Access the webcam
+        if (navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function (stream) {
+                    video.srcObject = stream;
+                    video.addEventListener('loadedmetadata', processInRealTime);
+                })
+                .catch(function (error) {
+                    console.error("Error accessing the webcam", error);
+                });
+        }
+    
+        function processInRealTime(timeStamp) {
+            if (timeStamp - lastTimeStamp > 60) {
+                lastTimeStamp = timeStamp;
+                captureAndProcessFrame();
+            }
+            requestAnimationFrame(processInRealTime);
+        }
+    
+        function captureAndProcessFrame() {
+            const imageData = videoToImageData();
+    
+            fetch('/process_frame', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ image: imageData })
+            })
+            .then(response => response.json())
+            .then(data => {
+                context.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
+    
+                // Flip the canvas context horizontally before drawing
+                context.save();
+                context.translate(canvas.width, 0);
+                context.scale(-1, 1);
+    
+                // Diagnostic log
+                console.log('Landmarks received:', data.landmarks);
+    
+                data.landmarks.forEach(landmark => {
+                    if (landmark.id === 15 || landmark.id === 16) { // Check for wrists
+                        // Diagnostic log
+                        console.log('Drawing fireball at wrist:', landmark);
+                        const x = (1 - landmark.x) * canvas.width; // Flip horizontally
+                        const y = landmark.y * canvas.height;
+                        drawFireball(x, y, 20); // Fireball size
+                    }
+                });
+    
+                // Restore the original state of the canvas context
+                context.restore();
+            })
+            .catch(error => {
+                console.error('Error processing the frame:', error);
+            });
+        }
+    
+        function drawFireball(x, y, size) {
+            // Draw the base circle for the fireball
+            context.beginPath();
+            context.arc(x, y, size, 0, 2 * Math.PI);
+            context.fillStyle = 'orange';
+            context.fill();
+    
+            // Add outer glow to simulate flames
+            context.shadowColor = 'red';
+            context.shadowBlur = 20;
+            context.arc(x, y, size, 0, 2 * Math.PI);
+            context.fill();
+    
+            // Reset shadow blur for other drawing operations
+            context.shadowBlur = 0;
+    
+            // Draw the inner part of the flame
+            context.beginPath();
+            context.arc(x, y, size * 0.7, 0, 2 * Math.PI);
+            context.fillStyle = 'yellow';
+            context.fill();
+    
+            // Draw the core of the fireball
+            context.beginPath();
+            context.arc(x, y, size * 0.4, 0, 2 * Math.PI);
+            context.fillStyle = 'white';
+            context.fill();
+        }
+    
+        function videoToImageData() {
+            let tempCanvas = document.createElement('canvas');
+            let tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = canvas.height;
+    
+            tempCtx.translate(tempCanvas.width, 0);
+            tempCtx.scale(-1, 1);
+            tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
+            
+            let imageData = tempCanvas.toDataURL('image/jpeg', 0.5);
+            return imageData;
+        }
+    
+        function saveImage() {
+            const imageData = canvas.toDataURL('image/png');
+            fetch('/save_image', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ image: imageData })
+            });
+        }
+    
+        setInterval(saveImage, 300);
+    </script>
+    
+</body>
+</html>

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Real-Time Hand Tracking with Overlay</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: black; }
+        #video, #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+    </style>
+</head>
+<body>
+    <video id="video" width="640" height="480" autoplay style="display: none;"></video>
+    <canvas id="canvas" width="768" height="512"></canvas>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const context = canvas.getContext('2d');
+        let lastTimeStamp = 0;
+    
+        // Access the webcam
+        if (navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function (stream) {
+                    video.srcObject = stream;
+                    video.addEventListener('loadedmetadata', processInRealTime);
+                })
+                .catch(function (error) {
+                    console.error("Error accessing the webcam", error);
+                });
+        }
+    
+        function processInRealTime(timeStamp) {
+            if (timeStamp - lastTimeStamp > 100) { // Adjusted to process every 100 milliseconds
+                lastTimeStamp = timeStamp;
+                captureAndProcessFrame();
+            }
+            requestAnimationFrame(processInRealTime);
+        }
+    
+        function captureAndProcessFrame() {
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            let imageData = canvas.toDataURL('image/jpeg', 0.5);
+
+            fetch('/process_frame', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ image: imageData })
+            })
+            .then(response => response.json())
+            .then(data => {
+                context.clearRect(0, 0, canvas.width, canvas.height);
+
+                data.fingertip_details.forEach(fingertip => {
+                    let mirroredX = canvas.width - (fingertip.x * canvas.width);
+                    let scaledY = fingertip.y * canvas.height;
+
+                    if (fingertip.hand_side === 'Left') {
+                        // Draw circle for the left hand
+                        context.beginPath();
+                        context.arc(mirroredX, scaledY, fingertip.size, 0, 2 * Math.PI);
+                        context.fillStyle = 'blue';
+                        context.fill();
+                    } else if (fingertip.hand_side === 'Right') {
+                        // Get color from y position for the right hand
+                        context.fillStyle = getColorFromValue(scaledY);
+                        // Draw a circle around the fingertip
+                        context.beginPath();
+                        context.arc(mirroredX, scaledY, fingertip.size + 10, 0, 2 * Math.PI);
+                        context.strokeStyle = context.fillStyle;
+                        context.stroke();
+                    }
+                });
+            })
+            .catch(error => {
+                console.error('Error processing the frame:', error);
+            });
+        }
+
+        function getColorFromValue(yPosition) {
+            var canvasHeight = canvas.height;
+            var colors = [
+                'Red', 'Scarlet', 'Orange',  'Gold', 
+                'Yellow', 'Chartreuse', 'Green',  'Turquoise', 
+                'Cyan',  'Azure', 'Sapphire', 'Indigo', 
+             'Purple', 'Magenta', 'Pink', 'Fuchsia', 'Rose'
+            ];
+
+            // Map yPosition to the color index. The lower the yPosition (higher on canvas), the lower the index.
+            var index = Math.floor(yPosition * (colors.length - 1) / canvasHeight);
+            return colors[index];
+        }
+
+
+        function saveImage() {
+            const imageData = canvas.toDataURL('image/png');
+            fetch('/save_image', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ image: imageData })
+            });
+        }
+    </script>
+</body>
+</html>

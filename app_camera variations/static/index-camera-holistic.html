@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Real-Time Hand Tracking with Overlay</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: black; }
+        #video, #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+    </style>
+</head>
+<body>
+    <video id="video" width="640" height="480" autoplay style="display: none;"></video>
+    <canvas id="canvas" width="768" height="512"></canvas>
+
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const context = canvas.getContext('2d');
+        let lastTimeStamp = 0;
+    
+        // Access the webcam
+        if (navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function (stream) {
+                    video.srcObject = stream;
+                    video.addEventListener('loadedmetadata', processInRealTime);
+                })
+                .catch(function (error) {
+                    console.error("Error accessing the webcam", error);
+                });
+        }
+    
+        function processInRealTime(timeStamp) {
+            if (timeStamp - lastTimeStamp > 60) { // Process every 50 milliseconds
+                lastTimeStamp = timeStamp;
+                captureAndProcessFrame();
+            }
+            requestAnimationFrame(processInRealTime);
+        }
+    
+        function captureAndProcessFrame() {
+    const imageData = videoToImageData();
+
+    fetch('/process_frame', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ image: imageData })
+    })
+    .then(response => response.json())
+    .then(data => {
+        context.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
+
+        // Flip the canvas context horizontally before drawing
+        context.save();
+        context.translate(canvas.width, 0);
+        context.scale(-1, 1);
+
+        // Draw connections first so they appear under the landmarks
+        data.connections.forEach(connection => {
+            const start = connection.start;
+            const end = connection.end;
+            const sx = (1 - start.x) * canvas.width; // Flip horizontally
+            const sy = start.y * canvas.height;
+            const ex = (1 - end.x) * canvas.width; // Flip horizontally
+            const ey = end.y * canvas.height;
+
+            context.beginPath();
+            context.moveTo(sx, sy);
+            context.lineTo(ex, ey);
+            context.strokeStyle = 'white';  // Change this to use different colors if you want
+            context.lineWidth = 2;
+            context.stroke();
+        });
+
+        // Then draw the landmarks
+        data.landmarks.forEach(landmark => {
+            const x = (1 - landmark.x) * canvas.width; // Flip horizontally
+            const y = landmark.y * canvas.height;
+
+            context.beginPath();
+            context.arc(x, y, 5, 0, 2 * Math.PI);
+            context.fillStyle = 'blue';
+            context.fill();
+        });
+
+        // Restore the original state of the canvas context
+        context.restore();
+    })
+    .catch(error => {
+        console.error('Error processing the frame:', error);
+    });
+}
+
+
+
+function videoToImageData() {
+    let tempCanvas = document.createElement('canvas');
+    let tempCtx = tempCanvas.getContext('2d');
+
+    const canvasWidth = 768;
+    const canvasHeight = 512;
+    tempCanvas.width = canvasWidth;
+    tempCanvas.height = canvasHeight;
+
+    const videoAspectRatio = video.videoWidth / video.videoHeight;
+    const canvasAspectRatio = canvasWidth / canvasHeight;
+
+    let drawWidth, drawHeight, drawX, drawY;
+
+    if (videoAspectRatio > canvasAspectRatio) {
+        drawWidth = canvasWidth;
+        drawHeight = drawWidth / videoAspectRatio;
+        drawX = 0;
+        drawY = (canvasHeight - drawHeight) / 2;
+    } else {
+        drawHeight = canvasHeight;
+        drawWidth = drawHeight * videoAspectRatio;
+        drawX = (canvasWidth - drawWidth) / 2;
+        drawY = 0;
+    }
+
+    // Flip the image horizontally
+    tempCtx.translate(canvasWidth, 0);
+    tempCtx.scale(-1, 1);
+
+    // Draw the video centered and resized on the canvas
+    tempCtx.drawImage(video, drawX, drawY, drawWidth, drawHeight);
+
+    let imageData = tempCanvas.toDataURL('image/jpeg', 0.5);
+    tempCanvas = null;
+
+    return imageData;
+}
+
+
+
+        function getColorFromValue(yPosition) {
+            var canvasHeight = canvas.height;
+            var colors = [
+                'Red', 'Crimson', 'Scarlet', 'Orange', 'Amber', 'Gold', 
+                'Yellow', 'Lemon', 'Chartreuse', 'Green', 'Emerald', 'Turquoise', 
+                'Cyan', 'SkyBlue', 'Azure', 'Blue', 'Sapphire', 'Indigo', 
+                'Violet', 'Purple', 'Magenta', 'Pink', 'Fuchsia', 'Rose'
+            ];
+
+            // Map yPosition to the color index. The lower the yPosition (higher on canvas), the lower the index.
+            var index = Math.floor(yPosition * (colors.length - 1) / canvasHeight);
+            return colors[index];
+        }
+
+
+        function saveImage() {
+            const imageData = canvas.toDataURL('image/png');
+            fetch('/save_image', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ image: imageData })
+            });
+        }
+
+        setInterval(saveImage, 300);
+    </script>
+</body>
+</html>
