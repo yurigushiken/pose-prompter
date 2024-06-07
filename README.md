@@ -52,9 +52,14 @@ This component includes two files: `app.py` and `index.html`.
 
 ### Sample Videos
 
-- **YouCut_20231219_215001809.mp4**: [Link to video](sample%20videos/YouCut_20231219_215001809.mp4)
-- **YouCut_20231219_222700984_1.mp4**: [Link to video](sample%20videos/YouCut_20231219_222700984_1.mp4)
-- **YouCut_20231219_223437317.mp4**: [Link to video](sample%20videos/YouCut_20231219_223437317.mp4)
+- **Dual Planetary Dance**:
+  [![Dual Planetary Dance](https://img.youtube.com/vi/eyOeO71i9Yo/0.jpg)](https://youtu.be/eyOeO71i9Yo)
+
+- **Moon over Horizon**:
+  [![Moon over Horizon](https://img.youtube.com/vi/vMOaVY5-riU/0.jpg)](https://youtu.be/vMOaVY5-riU)
+
+- **Celestial Being**:
+  [![Celestial Being](https://img.youtube.com/vi/eyOeO71i9Yo/0.jpg)](https://youtu.be/eyOeO71i9Yo)
 
 ## Installation and Setup
 
